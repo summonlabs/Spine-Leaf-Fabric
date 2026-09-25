@@ -1,0 +1,47 @@
+# Build trees
+/build/
+build/
+out/
+cmake-build-*/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+install/
+_install/
+_deps/
+*.cmake.in.user
+
+# Compiler / linker artifacts
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.so
+*.dylib
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.log
+*.tmp
+*.swp
+
+# Local runtime state produced by examples/benchmarks/manual runs
+/.slf-state/
+/run-state/
+/scratch/
+
+# Editors / OS
+.vs/
+.vscode/
+.idea/
+*.user
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,12 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# The library links Threads::Threads on every platform, so the dependency is
+# resolved unconditionally here; on Windows FindThreads simply contributes
+# nothing.
+find_dependency(Threads)
+
+include("${CMAKE_CURRENT_LIST_DIR}/spine_leaf_fabricTargets.cmake")
+
+check_required_components(spine_leaf_fabric)

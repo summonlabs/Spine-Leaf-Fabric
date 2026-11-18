@@ -14,9 +14,12 @@
 #include "slf/store.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "fixtures.hpp"
@@ -437,4 +440,35 @@ SLF_TEST(store_missing_and_empty_directories) {
   const auto absent = recover_store(dir.path() / "does-not-exist", config, nullptr);
   SLF_EXPECT(absent.ok());
   SLF_EXPECT_EQ(absent.value().report.status, RecoveryStatus::Missing);
+}
+
+SLF_TEST(store_snapshot_write_waits_for_a_reader) {
+  TempDir dir{"snapshot-reader"};
+  const auto fabric = make_two_by_two();
+  SLF_EXPECT(fabric.ok());
+  StoreConfig config;
+  const std::filesystem::path path = default_snapshot_path(dir.path());
+  SLF_EXPECT(SnapshotFile::write(path, fabric.value(), SequenceNumber{4}, config).ok());
+  bool reader_opened = false;
+  bool written = false;
+  {
+    // An inspection of the store holds the snapshot open while the next
+    // snapshot replaces it, and closes it shortly after.
+    std::ifstream reader(path, std::ios::binary);
+    reader_opened = reader.is_open();
+    std::thread writer([&path, &fabric, &config, &written] {
+      written = SnapshotFile::write(path, fabric.value(), SequenceNumber{5}, config).ok();
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    reader.close();
+    writer.join();
+  }
+  SLF_EXPECT(reader_opened);
+  // The replacement waits for the reader instead of failing the snapshot.
+  SLF_EXPECT(written);
+  SequenceNumber covered{};
+  std::string detail;
+  const auto read = SnapshotFile::read(path, config, &covered, &detail);
+  SLF_EXPECT(read.ok());
+  SLF_EXPECT_EQ(covered, SequenceNumber{5});
 }

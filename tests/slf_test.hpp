@@ -252,11 +252,14 @@ template <class Tag, class Rep>
     SLF_ASSERT_RESTORE                                                                          \
   } while (false)
 
+// The operands of SLF_EXPECT_EQ and SLF_EXPECT_NE are copied: a reference would
+// dangle when an operand reads a member of a temporary, as in
+// SLF_EXPECT_EQ(parse_node_key("spine:0")->tier, Tier::Spine).
 #define SLF_EXPECT_EQ(actual, expected)                                                          \
   do {                                                                                           \
     ++slf_ctx.checks;                                                                            \
-    const auto& slf_actual_value = (actual);                                                      \
-    const auto& slf_expected_value = (expected);                                                  \
+    const auto slf_actual_value = (actual);                                                       \
+    const auto slf_expected_value = (expected);                                                   \
     SLF_ASSERT_GUARD                                                                             \
     if (!(slf_actual_value == slf_expected_value)) {                                             \
       slf_ctx.report(__FILE__, __LINE__,                                                         \
@@ -270,8 +273,8 @@ template <class Tag, class Rep>
 #define SLF_EXPECT_NE(actual, expected)                                                          \
   do {                                                                                           \
     ++slf_ctx.checks;                                                                            \
-    const auto& slf_actual_value = (actual);                                                      \
-    const auto& slf_expected_value = (expected);                                                  \
+    const auto slf_actual_value = (actual);                                                       \
+    const auto slf_expected_value = (expected);                                                   \
     SLF_ASSERT_GUARD                                                                             \
     if (slf_actual_value == slf_expected_value) {                                                \
       slf_ctx.report(__FILE__, __LINE__, std::string(#actual) + " != " + #expected);             \

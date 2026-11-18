@@ -145,3 +145,15 @@ SLF_TEST(transport_server_and_client_round_trip) {
   SLF_EXPECT(server.value()->stop().ok());
   SLF_EXPECT(runtime.stop().ok());
 }
+
+SLF_TEST(transport_a_second_listener_cannot_take_a_listening_port) {
+  const auto first = net::TcpListener::bind(net::Endpoint{"127.0.0.1", 0});
+  SLF_EXPECT(first.ok());
+  if (!first.ok()) {
+    return;
+  }
+  SLF_EXPECT(first.value().port() != 0);
+  const auto second = net::TcpListener::bind(net::Endpoint{"127.0.0.1", first.value().port()});
+  // Two fabrics must never share one listening port: the second bind fails.
+  SLF_EXPECT(!second.ok());
+}

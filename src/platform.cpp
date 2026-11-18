@@ -146,11 +146,28 @@ Status remove_file(const std::filesystem::path& path) noexcept {
 
 Status replace_file(const std::filesystem::path& source, const std::filesystem::path& destination) noexcept {
 #if defined(_WIN32)
-  if (::MoveFileExA(source.string().c_str(), destination.string().c_str(),
-                    MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == 0) {
-    return last_os_error("MoveFileEx");
+  // While a reader has the destination open (an inspection of the store, an
+  // antivirus or indexing scan) the replace fails until the reader closes the
+  // file, so it is retried for a bounded time (about 2 s). A directory in the
+  // way is not transient and fails at once.
+  for (int attempt = 0;; ++attempt) {
+    if (::MoveFileExA(source.string().c_str(), destination.string().c_str(),
+                      MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0) {
+      return Status::success();
+    }
+    const DWORD error = ::GetLastError();
+    const DWORD attributes = ::GetFileAttributesA(destination.string().c_str());
+    const bool directory =
+        attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    const bool transient = (error == ERROR_ACCESS_DENIED || error == ERROR_SHARING_VIOLATION ||
+                            error == ERROR_LOCK_VIOLATION) &&
+                           !directory;
+    if (!transient || attempt >= 100) {
+      ::SetLastError(error);
+      return last_os_error("MoveFileEx");
+    }
+    ::Sleep(20);
   }
-  return Status::success();
 #else
   if (::rename(source.string().c_str(), destination.string().c_str()) != 0) {
     return last_os_error("rename");

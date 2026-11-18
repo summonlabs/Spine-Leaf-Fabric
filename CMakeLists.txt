@@ -59,7 +59,9 @@ endif()
 if(SLF_ENABLE_ASAN)
   if(MSVC)
     target_compile_options(slf_warnings INTERFACE /fsanitize=address /Zi)
-    target_link_options(slf_warnings INTERFACE /fsanitize=address /INCREMENTAL:NO)
+    # The linker does not know /fsanitize=address (LNK4044); /DEBUG avoids
+    # LNK4302 for the sanitizer objects.
+    target_link_options(slf_warnings INTERFACE /INCREMENTAL:NO /DEBUG)
   else()
     target_compile_options(slf_warnings INTERFACE -fsanitize=address -fno-omit-frame-pointer -g)
     target_link_options(slf_warnings INTERFACE -fsanitize=address)
